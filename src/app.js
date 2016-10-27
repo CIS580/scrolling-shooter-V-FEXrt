@@ -163,7 +163,7 @@ function render(elapsedTime, ctx) {
     // source rectangle
     0, 0, mid.width, mid.height,
     // destination rectangle
-    0, -camera.y * 2, mid.width, mid.height
+    0, -camera.y * (3/2), mid.width, mid.height
   );
   ctx.drawImage(
     // image

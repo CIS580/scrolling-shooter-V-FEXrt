@@ -24,7 +24,7 @@ function Player(bullets, missiles) {
   this.missileCount = 4;
   this.bullets = bullets;
   this.angle = 0;
-  this.position = {x: 200, y: 2775};
+  this.position = {x: 200, y: 8335};
   this.velocity = {x: 0, y: 0};
   this.img = new Image()
   this.img.src = 'assets/tyrian.shp.007D3C.png';
@@ -58,8 +58,8 @@ Player.prototype.update = function(elapsedTime, input) {
 
   // don't let the player move off-screen
   if(this.position.x < 0) this.position.x = 0;
-  if(this.position.x > 1008) this.position.x = 1008;
-  if(this.position.y > 2775) this.position.y = 2775; // TODO: this number need to match actual height
+  if(this.position.x > 768) this.position.x = 768;
+  if(this.position.y > 8350) this.position.y = 8350; // TODO: this number need to match actual height
   if(this.position.y < 672/2) this.position.y = 672/2;
 }
 

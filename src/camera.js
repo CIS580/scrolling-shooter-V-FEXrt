@@ -39,8 +39,8 @@ Camera.prototype.update = function(target) {
     this.y = 0;
   }
 
-  if(this.y > 2800 - this.height){
-    this.y = 2800 - this.height;
+  if(this.y > 8400 - this.height){
+    this.y = 8400 - this.height;
   }
 }
 
