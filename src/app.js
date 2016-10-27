@@ -22,6 +22,13 @@ var bullets = new BulletPool(10);
 var missiles = [];
 var player = new Player(bullets, missiles);
 
+var top = new Image()
+top.src = 'assets/Levels/Level1/topground.png';
+var mid = new Image()
+mid.src = 'assets/Levels/Level1/middleground.png';
+var back = new Image()
+back.src = 'assets/Levels/Level1/background.png';
+
 /**
  * @function onkeydown
  * Handles keydown events
@@ -75,6 +82,10 @@ window.onkeyup = function(event) {
     case "ArrowRight":
     case "d":
       input.right = false;
+      event.preventDefault();
+      break;
+    case "f":
+      player.fireBullet();
       event.preventDefault();
       break;
   }
@@ -135,9 +146,33 @@ function update(elapsedTime) {
   */
 function render(elapsedTime, ctx) {
   ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, 1024, 786);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // TODO: Render background
+  ctx.drawImage(
+    // image
+    back,
+    // source rectangle
+    0, 0, back.width, back.height,
+    // destination rectangle
+    0, -camera.y, back.width, back.height
+  );
+  ctx.drawImage(
+    // image
+    mid,
+    // source rectangle
+    0, 0, mid.width, mid.height,
+    // destination rectangle
+    0, -camera.y * 2, mid.width, mid.height
+  );
+  ctx.drawImage(
+    // image
+    top,
+    // source rectangle
+    0, 0, top.width, top.height,
+    // destination rectangle
+    0, -camera.y * 3, top.width, top.height
+  );
 
   // Transform the coordinate system using
   // the camera position BEFORE rendering

@@ -2,7 +2,7 @@
 
 /* Classes and Libraries */
 const Vector = require('./vector');
-const Missile = require('./missile');
+//const Missile = require('./missile');
 
 /* Constants */
 const PLAYER_SPEED = 5;
@@ -24,7 +24,7 @@ function Player(bullets, missiles) {
   this.missileCount = 4;
   this.bullets = bullets;
   this.angle = 0;
-  this.position = {x: 200, y: 200};
+  this.position = {x: 200, y: 2775};
   this.velocity = {x: 0, y: 0};
   this.img = new Image()
   this.img.src = 'assets/tyrian.shp.007D3C.png';
@@ -58,8 +58,9 @@ Player.prototype.update = function(elapsedTime, input) {
 
   // don't let the player move off-screen
   if(this.position.x < 0) this.position.x = 0;
-  if(this.position.x > 1024) this.position.x = 1024;
-  if(this.position.y > 786) this.position.y = 786;
+  if(this.position.x > 1008) this.position.x = 1008;
+  if(this.position.y > 2775) this.position.y = 2775; // TODO: this number need to match actual height
+  if(this.position.y < 672/2) this.position.y = 672/2;
 }
 
 /**
@@ -81,9 +82,9 @@ Player.prototype.render = function(elapasedTime, ctx) {
  * Fires a bullet
  * @param {Vector} direction
  */
-Player.prototype.fireBullet = function(direction) {
-  var position = Vector.add(this.position, {x:30, y:30});
-  var velocity = Vector.scale(Vector.normalize(direction), BULLET_SPEED);
+Player.prototype.fireBullet = function() {
+  var position = this.position; //Vector.add(this.position, {x:30, y:30});
+  var velocity = Vector.scale(Vector.normalize({x: 0, y: -1}), BULLET_SPEED);
   this.bullets.add(position, velocity);
 }
 
