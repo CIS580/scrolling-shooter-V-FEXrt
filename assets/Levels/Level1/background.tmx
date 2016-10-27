@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.0" orientation="orthogonal" renderorder="right-down" width="42" height="300" tilewidth="24" tileheight="28" nextobjectid="1">
+ <tileset firstgid="1" name="shapesy" tilewidth="24" tileheight="28">
+  <image source="../../shapesy.png" width="240" height="1876"/>
+ </tileset>
  <layer name="Tile Layer 1" width="42" height="300">
   <data encoding="base64" compression="zlib">
-   eJztwTEBAAAAwqD1T20KP6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAlwHE4AAB
+   eJzt2NkKwjAQBdC6C+6Cisv/f6dTRCgIRTSFqZ6H8xouSZs77bmqqjNAcoMwDKMEWdoswjKsEmRpcwjHcEqQBYD+0Mdl6WOAB/1Sln4BgP9kpirLTAWQV1edV3rdrjqv9LpddZ4uBQAAPuE/Z1m+zeCVe6Ys9wzwS3REWd90RB/Oos447sFZPJ+X2iTxnjZzZt7TZs5NlXcGqt+/dfKMzazZM/KeaZiFeYIsbbZhF/YJsrS5hGu4JcgCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHTnDhn3yN0=
   </data>
  </layer>
 </map>
