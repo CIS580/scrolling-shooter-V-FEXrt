@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.0" orientation="orthogonal" renderorder="right-down" width="32" height="100" tilewidth="24" tileheight="28" nextobjectid="1">
- <layer name="Tile Layer 1" width="32" height="100">
+<map version="1.0" orientation="orthogonal" renderorder="right-down" width="32" height="700" tilewidth="24" tileheight="28" nextobjectid="1">
+ <tileset firstgid="1" name="newsh0.shp.000000" tilewidth="24" tileheight="28" tilecount="72" columns="9">
+  <image source="../../newsh0.shp.000000.png" width="228" height="224"/>
+ </tileset>
+ <layer name="Tile Layer 1" width="32" height="700">
   <data encoding="base64" compression="zlib">
-   eJztwTEBAAAAwqD1T20ND6AAAAAAAAAAAAAAAAB4NjIAAAE=
+   eJzt3MEOwUAARdEqSqqUoPiD/v8Xeokt20mr5yR3PdtZzJuqYi5WqU7rtEnb1KRd2hc4v02H1KVjOqU+ndOlwPnXdEv3NKRHeqZXgbMBAFg2d/Hfd/GxwPkAAAAAAAAAAADMk/d33t8BAAAAAAAAAAAAAAAA02T/Zf8FAAAAAAAAAAAAAAAAAAB82F/bXwMAAAAAAAAAAAAAAAAAwFTYP9s/AwAAAAAAAAAAAAAAAHxjf2Z/BgAAAAAAAAAAAAAAAAAAAP4f+I//B97Hugpp
   </data>
  </layer>
 </map>

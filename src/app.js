@@ -163,7 +163,7 @@ function render(elapsedTime, ctx) {
     // source rectangle
     0, 0, mid.width, mid.height,
     // destination rectangle
-    0, -camera.y * (3/2), mid.width, mid.height
+    0, -camera.y * (5/3), mid.width, mid.height
   );
   ctx.drawImage(
     // image
@@ -171,7 +171,7 @@ function render(elapsedTime, ctx) {
     // source rectangle
     0, 0, top.width, top.height,
     // destination rectangle
-    0, -camera.y * 3, top.width, top.height
+    0, -camera.y * (7/3), top.width, top.height
   );
 
   // Transform the coordinate system using

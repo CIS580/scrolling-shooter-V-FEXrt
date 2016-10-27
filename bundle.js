@@ -164,7 +164,7 @@ function render(elapsedTime, ctx) {
     // source rectangle
     0, 0, mid.width, mid.height,
     // destination rectangle
-    0, -camera.y * (3/2), mid.width, mid.height
+    0, -camera.y * (5/3), mid.width, mid.height
   );
   ctx.drawImage(
     // image
@@ -172,7 +172,7 @@ function render(elapsedTime, ctx) {
     // source rectangle
     0, 0, top.width, top.height,
     // destination rectangle
-    0, -camera.y * 3, top.width, top.height
+    0, -camera.y * (7/3), top.width, top.height
   );
 
   // Transform the coordinate system using
@@ -486,7 +486,7 @@ function Player(bullets, missiles) {
   this.missileCount = 4;
   this.bullets = bullets;
   this.angle = 0;
-  this.position = {x: 200, y: 8335};
+  this.position = {x: 200, y: 8375};
   this.velocity = {x: 0, y: 0};
   this.img = new Image()
   this.img.src = 'assets/tyrian.shp.007D3C.png';
@@ -520,8 +520,8 @@ Player.prototype.update = function(elapsedTime, input) {
 
   // don't let the player move off-screen
   if(this.position.x < 0) this.position.x = 0;
-  if(this.position.x > 768) this.position.x = 768;
-  if(this.position.y > 8350) this.position.y = 8350; // TODO: this number need to match actual height
+  if(this.position.x > 1008) this.position.x = 1008;
+  if(this.position.y > 8375) this.position.y = 8375; // TODO: this number need to match actual height
   if(this.position.y < 672/2) this.position.y = 672/2;
 }
 
