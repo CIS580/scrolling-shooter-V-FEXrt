@@ -6,6 +6,8 @@ const Vector = require('./vector');
 const Camera = require('./camera');
 const Player = require('./player');
 const BulletPool = require('./bullet_pool');
+const Tilemap = require('./tilemap');
+const mapdata = require('../tilemaps/background1.json');
 
 
 /* Global variables */
@@ -21,13 +23,20 @@ var camera = new Camera(canvas);
 var bullets = new BulletPool(10);
 var missiles = [];
 var player = new Player(bullets, missiles);
+var tilemap = new Tilemap(mapdata, canvas, true, {
+  onload: function() {
+    masterLoop(performance.now());
+  }
+});
 
+/*
 var top = new Image()
 top.src = 'assets/Levels/Level2/topground.png';
 var mid = new Image()
 mid.src = 'assets/Levels/Level2/middleground.png';
 var back = new Image()
 back.src = 'assets/Levels/Level2/background.png';
+*/
 
 /**
  * @function onkeydown
@@ -100,7 +109,6 @@ var masterLoop = function(timestamp) {
   game.loop(timestamp);
   window.requestAnimationFrame(masterLoop);
 }
-masterLoop(performance.now());
 
 /**
  * @function update
@@ -117,6 +125,8 @@ function update(elapsedTime) {
 
   // update the camera
   camera.update(player.position);
+
+  tilemap.moveTo({x:0, y: camera.y});
 
   // Update bullets
   bullets.update(elapsedTime, function(bullet){
@@ -148,6 +158,7 @@ function render(elapsedTime, ctx) {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+/*
   // TODO: Render background
   ctx.drawImage(
     // image
@@ -173,7 +184,9 @@ function render(elapsedTime, ctx) {
     // destination rectangle
     0, 0, top.width, canvas.height
   );
+*/
 
+  tilemap.render(ctx);
   // Transform the coordinate system using
   // the camera position BEFORE rendering
   // objects in the world - that way they

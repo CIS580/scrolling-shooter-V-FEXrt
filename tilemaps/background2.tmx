@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.0" orientation="orthogonal" renderorder="right-down" width="32" height="300" tilewidth="24" tileheight="28" nextobjectid="1">
- <tileset firstgid="1" name="shapesz" tilewidth="24" tileheight="28">
-  <image source="../../shapesz.png" width="240" height="1736"/>
+ <tileset firstgid="1" name="shapesz" tilewidth="24" tileheight="28" tilecount="620" columns="10">
+  <image source="../tilesets/shapesz.png" width="240" height="1736"/>
   <terraintypes>
    <terrain name="Grass" tile="-1"/>
    <terrain name="Rock" tile="-1"/>

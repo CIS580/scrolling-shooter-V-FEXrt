@@ -27,7 +27,7 @@ function Player(bullets, missiles) {
   this.position = {x: 200, y: 8375};
   this.velocity = {x: 0, y: 0};
   this.img = new Image()
-  this.img.src = 'assets/tyrian.shp.007D3C.png';
+  this.img.src = 'tilesets/tyrian.shp.007D3C.png';
 }
 
 /**
