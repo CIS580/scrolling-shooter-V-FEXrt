@@ -23,11 +23,11 @@ var missiles = [];
 var player = new Player(bullets, missiles);
 
 var top = new Image()
-top.src = 'assets/Levels/Level1/topground.png';
+top.src = 'assets/Levels/Level2/topground.png';
 var mid = new Image()
-mid.src = 'assets/Levels/Level1/middleground.png';
+mid.src = 'assets/Levels/Level2/middleground.png';
 var back = new Image()
-back.src = 'assets/Levels/Level1/background.png';
+back.src = 'assets/Levels/Level2/background.png';
 
 /**
  * @function onkeydown
@@ -153,25 +153,25 @@ function render(elapsedTime, ctx) {
     // image
     back,
     // source rectangle
-    0, 0, back.width, back.height,
+    0, camera.y, back.width, canvas.height,
     // destination rectangle
-    0, -camera.y, back.width, back.height
+    0, 0, back.width, canvas.height
   );
   ctx.drawImage(
     // image
     mid,
     // source rectangle
-    0, 0, mid.width, mid.height,
+    0, camera.y * (5/3), mid.width, canvas.height,
     // destination rectangle
-    0, -camera.y * (5/3), mid.width, mid.height
+    0, 0, mid.width, canvas.height
   );
   ctx.drawImage(
     // image
     top,
     // source rectangle
-    0, 0, top.width, top.height,
+    0, camera.y * (7/3), top.width, canvas.height,
     // destination rectangle
-    0, -camera.y * (7/3), top.width, top.height
+    0, 0, top.width, canvas.height
   );
 
   // Transform the coordinate system using
