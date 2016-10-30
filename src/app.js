@@ -1,13 +1,18 @@
 "use strict";
 
+window.debug = true;
+
 /* Classes and Libraries */
 const Game = require('./game');
 const Vector = require('./vector');
 const Camera = require('./camera');
 const Player = require('./player');
 const BulletPool = require('./bullet_pool');
+const Hud = require('./hud');
 const Tilemap = require('./tilemap');
-const mapdata = require('../tilemaps/background1.json');
+const mapdataB1 = require('../tilemaps/background3.json');
+const mapdataM1 = require('../tilemaps/middleground3.json');
+const mapdataT1 = require('../tilemaps/topground3.json');
 
 
 /* Global variables */
@@ -21,22 +26,33 @@ var input = {
 }
 var camera = new Camera(canvas);
 var bullets = new BulletPool(10);
-var missiles = [];
-var player = new Player(bullets, missiles);
-var tilemap = new Tilemap(mapdata, canvas, true, {
+var player = new Player(bullets);
+var tilemaps = [];
+var hud = new Hud(player, {x: 768, y: 0, width: canvas.width - 768, height: canvas.height});
+
+tilemaps.push(new Tilemap(mapdataB1, canvas, true, {
   onload: function() {
+    startLevel();
+  }
+}));
+tilemaps.push(new Tilemap(mapdataM1, canvas, true, {
+  onload: function() {
+    startLevel();
+  }
+}));
+tilemaps.push(new Tilemap(mapdataT1, canvas, true, {
+  onload: function() {
+    startLevel();
+  }
+}));
+
+var mapCount = 3
+function startLevel(){
+  mapCount--;
+  if(mapCount == 0){
     masterLoop(performance.now());
   }
-});
-
-/*
-var top = new Image()
-top.src = 'assets/Levels/Level2/topground.png';
-var mid = new Image()
-mid.src = 'assets/Levels/Level2/middleground.png';
-var back = new Image()
-back.src = 'assets/Levels/Level2/background.png';
-*/
+}
 
 /**
  * @function onkeydown
@@ -126,24 +142,14 @@ function update(elapsedTime) {
   // update the camera
   camera.update(player.position);
 
-  tilemap.moveTo({x:0, y: camera.y});
+  tilemaps[0].moveTo({x:0, y: camera.y});
+  tilemaps[1].moveTo({x:0, y: camera.y * (5/3)});
+  tilemaps[2].moveTo({x:0, y: camera.y * (7/3)});
 
   // Update bullets
   bullets.update(elapsedTime, function(bullet){
     if(!camera.onScreen(bullet)) return true;
     return false;
-  });
-
-  // Update missiles
-  var markedForRemoval = [];
-  missiles.forEach(function(missile, i){
-    missile.update(elapsedTime);
-    if(Math.abs(missile.position.x - camera.x) > camera.width * 2)
-      markedForRemoval.unshift(i);
-  });
-  // Remove missiles that have gone off-screen
-  markedForRemoval.forEach(function(index){
-    missiles.splice(index, 1);
   });
 }
 
@@ -158,35 +164,12 @@ function render(elapsedTime, ctx) {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-/*
-  // TODO: Render background
-  ctx.drawImage(
-    // image
-    back,
-    // source rectangle
-    0, camera.y, back.width, canvas.height,
-    // destination rectangle
-    0, 0, back.width, canvas.height
-  );
-  ctx.drawImage(
-    // image
-    mid,
-    // source rectangle
-    0, camera.y * (5/3), mid.width, canvas.height,
-    // destination rectangle
-    0, 0, mid.width, canvas.height
-  );
-  ctx.drawImage(
-    // image
-    top,
-    // source rectangle
-    0, camera.y * (7/3), top.width, canvas.height,
-    // destination rectangle
-    0, 0, top.width, canvas.height
-  );
-*/
+  tilemaps.forEach(function(map){
+    map.render(ctx);
+  });
 
-  tilemap.render(ctx);
+  hud.render(ctx);
+
   // Transform the coordinate system using
   // the camera position BEFORE rendering
   // objects in the world - that way they
@@ -212,11 +195,6 @@ function render(elapsedTime, ctx) {
 function renderWorld(elapsedTime, ctx) {
     // Render the bullets
     bullets.render(elapsedTime, ctx);
-
-    // Render the missiles
-    missiles.forEach(function(missile) {
-      missile.render(elapsedTime, ctx);
-    });
 
     // Render the player
     player.render(elapsedTime, ctx);

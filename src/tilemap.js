@@ -97,8 +97,8 @@ Tilemap.prototype.moveTo = function(position){
   }
 
   if(this.smoothScroll){
-    this.draw.offset.x = position.x - this.draw.origin.x * this.tileWidth
-    this.draw.offset.y = position.y - this.draw.origin.y * this.tileHeight
+    this.draw.offset.x = Math.floor(position.x - this.draw.origin.x * this.tileWidth)
+    this.draw.offset.y = Math.floor(position.y - this.draw.origin.y * this.tileHeight)
   }
 }
 

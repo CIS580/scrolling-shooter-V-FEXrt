@@ -2,7 +2,6 @@
 
 /* Classes and Libraries */
 const Vector = require('./vector');
-//const Missile = require('./missile');
 
 /* Constants */
 const PLAYER_SPEED = 5;
@@ -19,15 +18,15 @@ module.exports = exports = Player;
  * Creates a player
  * @param {BulletPool} bullets the bullet pool
  */
-function Player(bullets, missiles) {
-  this.missiles = missiles;
-  this.missileCount = 4;
+function Player(bullets) {
   this.bullets = bullets;
   this.angle = 0;
-  this.position = {x: 200, y: 8375};
+  this.position = {x: 200, y: 8375, r: 12};
   this.velocity = {x: 0, y: 0};
   this.img = new Image()
   this.img.src = 'tilesets/tyrian.shp.007D3C.png';
+
+  this.health = 100;
 }
 
 /**
@@ -59,7 +58,7 @@ Player.prototype.update = function(elapsedTime, input) {
   // don't let the player move off-screen
   if(this.position.x < 0) this.position.x = 0;
   if(this.position.x > 1008) this.position.x = 1008;
-  if(this.position.y > 8375) this.position.y = 8375; // TODO: this number need to match actual height
+  if(this.position.y > 8375) this.position.y = 8375;
   if(this.position.y < 672/2) this.position.y = 672/2;
 }
 
@@ -70,10 +69,16 @@ Player.prototype.update = function(elapsedTime, input) {
  * @param {CanvasRenderingContext2D} ctx
  */
 Player.prototype.render = function(elapasedTime, ctx) {
-  var offset = this.angle * 23;
+  var offset = this.angle * 24;
   ctx.save();
   ctx.translate(this.position.x, this.position.y);
-  ctx.drawImage(this.img, 48+offset, 57, 23, 27, -12.5, -12, 23, 27);
+  ctx.strokeStyle = 'red';
+  if(window.debug){
+    ctx.beginPath();
+    ctx.arc(0, 0, this.position.r, 0, 2*Math.PI);
+    ctx.stroke();
+  }
+  ctx.drawImage(this.img, 48+offset, 57, 24, 28, -12, -14, 24, 28);
   ctx.restore();
 }
 
@@ -83,21 +88,11 @@ Player.prototype.render = function(elapasedTime, ctx) {
  * @param {Vector} direction
  */
 Player.prototype.fireBullet = function() {
-  var position = this.position; //Vector.add(this.position, {x:30, y:30});
+  var position = {x: this.position.x, y: this.position.y}; //Vector.add(this.position, {x:30, y:30});
   var velocity = Vector.scale(Vector.normalize({x: 0, y: -1}), BULLET_SPEED);
   this.bullets.add(position, velocity);
 }
 
-/**
- * @function fireMissile
- * Fires a missile, if the player still has missiles
- * to fire.
- */
-Player.prototype.fireMissile = function() {
-  if(this.missileCount > 0){
-    var position = Vector.add(this.position, {x:0, y:30})
-    var missile = new Missile(position);
-    this.missiles.push(missile);
-    this.missileCount--;
-  }
+Player.prototype.damage = function(amount) {
+  this.health -= amount;
 }
