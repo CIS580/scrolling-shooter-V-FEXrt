@@ -129,7 +129,7 @@ window.onkeyup = function(event) {
       event.preventDefault();
       break;
   }
-  if(event.keyCode == 32){
+  if(event.keyCode == 32 || event.keyCode == 16){
     player.fireBullet();
     event.preventDefault();
   }

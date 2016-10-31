@@ -79,6 +79,9 @@ Enemy.prototype.update = function(elapsedTime) {
   this.position.x += this.velocity.x;
   this.position.y += this.velocity.y;
 
+  // don't let the enemy move onto the hud
+  if(this.position.x > 758) this.position.x = 758;
+
 }
 
 /**

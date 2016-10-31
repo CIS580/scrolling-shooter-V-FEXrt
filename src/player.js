@@ -82,7 +82,7 @@ Player.prototype.update = function(elapsedTime) {
 
   // don't let the player move off-screen
   if(this.position.x < 0) this.position.x = 0;
-  if(this.position.x > 1008) this.position.x = 1008;
+  if(this.position.x > 758) this.position.x = 758;
   if(this.position.y > 8375) this.position.y = 8375;
   if(this.position.y < 672/2) this.position.y = 672/2;
 }

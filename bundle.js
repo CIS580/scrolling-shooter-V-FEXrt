@@ -130,7 +130,7 @@ window.onkeyup = function(event) {
       event.preventDefault();
       break;
   }
-  if(event.keyCode == 32){
+  if(event.keyCode == 32 || event.keyCode == 16){
     player.fireBullet();
     event.preventDefault();
   }
@@ -541,6 +541,9 @@ Enemy.prototype.update = function(elapsedTime) {
   // move the enemy
   this.position.x += this.velocity.x;
   this.position.y += this.velocity.y;
+
+  // don't let the enemy move onto the hud
+  if(this.position.x > 758) this.position.x = 758;
 
 }
 
@@ -1221,7 +1224,7 @@ Player.prototype.update = function(elapsedTime) {
 
   // don't let the player move off-screen
   if(this.position.x < 0) this.position.x = 0;
-  if(this.position.x > 1008) this.position.x = 1008;
+  if(this.position.x > 758) this.position.x = 758;
   if(this.position.y > 8375) this.position.y = 8375;
   if(this.position.y < 672/2) this.position.y = 672/2;
 }
