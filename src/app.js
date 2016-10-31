@@ -7,7 +7,8 @@ const Game = require('./game');
 const Vector = require('./vector');
 const Camera = require('./camera');
 const Player = require('./player');
-const BulletPool = require('./bullet_pool');
+const Enemy = require('./enemy');
+const EntityManager = require('./entity_manager');
 const Hud = require('./hud');
 const Tilemap = require('./tilemap');
 const mapdataB1 = require('../tilemaps/background3.json');
@@ -25,10 +26,17 @@ var input = {
   right: false
 }
 var camera = new Camera(canvas);
-var bullets = new BulletPool(10);
-var player = new Player(bullets);
+var entityManager = new EntityManager();
+var player = new Player(entityManager);
+
 var tilemaps = [];
 var hud = new Hud(player, {x: 768, y: 0, width: canvas.width - 768, height: canvas.height});
+
+window.camera = camera;
+window.input = input;
+
+entityManager.addEntity(player);
+entityManager.addEntity(new Enemy(entityManager, player));
 
 tilemaps.push(new Tilemap(mapdataB1, canvas, true, {
   onload: function() {
@@ -53,6 +61,14 @@ function startLevel(){
     masterLoop(performance.now());
   }
 }
+
+if(false){
+  canvas.onmousemove = function(event) {
+    var position = normalizeMouseCoord(event);
+    console.log(position);
+  }
+}
+
 
 /**
  * @function onkeydown
@@ -109,10 +125,10 @@ window.onkeyup = function(event) {
       input.right = false;
       event.preventDefault();
       break;
-    case "f":
-      player.fireBullet();
-      event.preventDefault();
-      break;
+  }
+  if(event.keyCode == 32){
+    player.fireBullet();
+    event.preventDefault();
   }
 }
 
@@ -135,10 +151,6 @@ var masterLoop = function(timestamp) {
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
-
-  // update the player
-  player.update(elapsedTime, input);
-
   // update the camera
   camera.update(player.position);
 
@@ -146,11 +158,7 @@ function update(elapsedTime) {
   tilemaps[1].moveTo({x:0, y: camera.y * (5/3)});
   tilemaps[2].moveTo({x:0, y: camera.y * (7/3)});
 
-  // Update bullets
-  bullets.update(elapsedTime, function(bullet){
-    if(!camera.onScreen(bullet)) return true;
-    return false;
-  });
+  entityManager.update(elapsedTime);
 }
 
 /**
@@ -168,8 +176,6 @@ function render(elapsedTime, ctx) {
     map.render(ctx);
   });
 
-  hud.render(ctx);
-
   // Transform the coordinate system using
   // the camera position BEFORE rendering
   // objects in the world - that way they
@@ -182,7 +188,7 @@ function render(elapsedTime, ctx) {
 
   // Render the GUI without transforming the
   // coordinate system
-  renderGUI(elapsedTime, ctx);
+  hud.render(ctx);
 }
 
 /**
@@ -193,19 +199,12 @@ function render(elapsedTime, ctx) {
   * @param {CanvasRenderingContext2D} ctx the context to render to
   */
 function renderWorld(elapsedTime, ctx) {
-    // Render the bullets
-    bullets.render(elapsedTime, ctx);
-
-    // Render the player
-    player.render(elapsedTime, ctx);
+    entityManager.render(elapsedTime, ctx);
 }
 
-/**
-  * @function renderGUI
-  * Renders the game's GUI IN SCREEN COORDINATES
-  * @param {DOMHighResTimeStamp} elapsedTime
-  * @param {CanvasRenderingContext2D} ctx
-  */
-function renderGUI(elapsedTime, ctx) {
-  // TODO: Render the GUI
+function normalizeMouseCoord(event){
+  var rect = canvas.getBoundingClientRect();
+  var x = event.clientX - rect.left;
+  var y = event.clientY - rect.top;
+  return {x: x, y: y};
 }

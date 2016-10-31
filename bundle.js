@@ -8,7 +8,8 @@ const Game = require('./game');
 const Vector = require('./vector');
 const Camera = require('./camera');
 const Player = require('./player');
-const BulletPool = require('./bullet_pool');
+const Enemy = require('./enemy');
+const EntityManager = require('./entity_manager');
 const Hud = require('./hud');
 const Tilemap = require('./tilemap');
 const mapdataB1 = require('../tilemaps/background3.json');
@@ -26,10 +27,17 @@ var input = {
   right: false
 }
 var camera = new Camera(canvas);
-var bullets = new BulletPool(10);
-var player = new Player(bullets);
+var entityManager = new EntityManager();
+var player = new Player(entityManager);
+
 var tilemaps = [];
 var hud = new Hud(player, {x: 768, y: 0, width: canvas.width - 768, height: canvas.height});
+
+window.camera = camera;
+window.input = input;
+
+entityManager.addEntity(player);
+entityManager.addEntity(new Enemy(entityManager, player));
 
 tilemaps.push(new Tilemap(mapdataB1, canvas, true, {
   onload: function() {
@@ -54,6 +62,14 @@ function startLevel(){
     masterLoop(performance.now());
   }
 }
+
+if(false){
+  canvas.onmousemove = function(event) {
+    var position = normalizeMouseCoord(event);
+    console.log(position);
+  }
+}
+
 
 /**
  * @function onkeydown
@@ -110,10 +126,10 @@ window.onkeyup = function(event) {
       input.right = false;
       event.preventDefault();
       break;
-    case "f":
-      player.fireBullet();
-      event.preventDefault();
-      break;
+  }
+  if(event.keyCode == 32){
+    player.fireBullet();
+    event.preventDefault();
   }
 }
 
@@ -136,10 +152,6 @@ var masterLoop = function(timestamp) {
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
-
-  // update the player
-  player.update(elapsedTime, input);
-
   // update the camera
   camera.update(player.position);
 
@@ -147,11 +159,7 @@ function update(elapsedTime) {
   tilemaps[1].moveTo({x:0, y: camera.y * (5/3)});
   tilemaps[2].moveTo({x:0, y: camera.y * (7/3)});
 
-  // Update bullets
-  bullets.update(elapsedTime, function(bullet){
-    if(!camera.onScreen(bullet)) return true;
-    return false;
-  });
+  entityManager.update(elapsedTime);
 }
 
 /**
@@ -169,8 +177,6 @@ function render(elapsedTime, ctx) {
     map.render(ctx);
   });
 
-  hud.render(ctx);
-
   // Transform the coordinate system using
   // the camera position BEFORE rendering
   // objects in the world - that way they
@@ -183,7 +189,7 @@ function render(elapsedTime, ctx) {
 
   // Render the GUI without transforming the
   // coordinate system
-  renderGUI(elapsedTime, ctx);
+  hud.render(ctx);
 }
 
 /**
@@ -194,28 +200,23 @@ function render(elapsedTime, ctx) {
   * @param {CanvasRenderingContext2D} ctx the context to render to
   */
 function renderWorld(elapsedTime, ctx) {
-    // Render the bullets
-    bullets.render(elapsedTime, ctx);
-
-    // Render the player
-    player.render(elapsedTime, ctx);
+    entityManager.render(elapsedTime, ctx);
 }
 
-/**
-  * @function renderGUI
-  * Renders the game's GUI IN SCREEN COORDINATES
-  * @param {DOMHighResTimeStamp} elapsedTime
-  * @param {CanvasRenderingContext2D} ctx
-  */
-function renderGUI(elapsedTime, ctx) {
-  // TODO: Render the GUI
+function normalizeMouseCoord(event){
+  var rect = canvas.getBoundingClientRect();
+  var x = event.clientX - rect.left;
+  var y = event.clientY - rect.top;
+  return {x: x, y: y};
 }
 
-},{"../tilemaps/background3.json":9,"../tilemaps/middleground3.json":10,"../tilemaps/topground3.json":11,"./bullet_pool":2,"./camera":3,"./game":4,"./hud":5,"./player":6,"./tilemap":7,"./vector":8}],2:[function(require,module,exports){
+},{"../tilemaps/background3.json":13,"../tilemaps/middleground3.json":15,"../tilemaps/topground3.json":16,"./camera":4,"./enemy":5,"./entity_manager":6,"./game":8,"./hud":9,"./player":10,"./tilemap":11,"./vector":12}],2:[function(require,module,exports){
 "use strict";
 
+const BulletDefinition = require('./bullet_types');
+
 /**
- * @module BulletPool
+ * @module Bullet
  * A class for managing bullets in-game
  * We use a Float32Array to hold our bullet info,
  * as this creates a single memory buffer we can
@@ -223,94 +224,86 @@ function renderGUI(elapsedTime, ctx) {
  * Values stored are: positionX, positionY, velocityX,
  * velocityY in that order.
  */
-module.exports = exports = BulletPool;
+module.exports = exports = Bullet;
 
 /**
- * @constructor BulletPool
- * Creates a BulletPool of the specified size
- * @param {uint} size the maximum number of bullets to exits concurrently
+ * @constructor Bullet
+ * Creates a Bullet
  */
-function BulletPool(maxSize) {
-  this.pool = new Float32Array(4 * maxSize);
-  this.end = 0;
-  this.max = maxSize;
+function Bullet(position, velocity, type, isEnemy) {
+  this.position = {x: position.x, y: position.y};
+  this.velocity = {x: velocity.x, y: velocity.y};
+  this.type = type;
+  this.isEnemy = isEnemy;
+  this.position.r = BulletDefinition.getTypeDefinition(this.type).radius
+  this.destroy = false;
 }
 
-/**
- * @function add
- * Adds a new bullet to the end of the BulletPool.
- * If there is no room left, no bullet is created.
- * @param {Vector} position where the bullet begins
- * @param {Vector} velocity the bullet's velocity
-*/
-BulletPool.prototype.add = function(position, velocity) {
-  if(this.end < this.max) {
-    this.pool[4*this.end] = position.x;
-    this.pool[4*this.end+1] = position.y;
-    this.pool[4*this.end+2] = velocity.x;
-    this.pool[4*this.end+3] = velocity.y;
-    this.end++;
-  }
+Bullet.prototype.update = function(elapsedTime){
+  this.position.x += this.velocity.x;
+  this.position.y += this.velocity.y;
 }
 
-/**
- * @function update
- * Updates the bullet using its stored velocity, and
- * calls the callback function passing the transformed
- * bullet.  If the callback returns true, the bullet is
- * removed from the pool.
- * Removed bullets are replaced with the last bullet's values
- * and the size of the bullet array is reduced, keeping
- * all live bullets at the front of the array.
- * @param {DOMHighResTimeStamp} elapsedTime
- * @param {function} callback called with the bullet's position,
- * if the return value is true, the bullet is removed from the pool
- */
-BulletPool.prototype.update = function(elapsedTime, callback) {
-  for(var i = 0; i < this.end; i++){
-    // Move the bullet
-    this.pool[4*i] += this.pool[4*i+2];
-    this.pool[4*i+1] += this.pool[4*i+3];
-    // If a callback was supplied, call it
-    if(callback && callback({
-      x: this.pool[4*i],
-      y: this.pool[4*i+1]
-    })) {
-      // Swap the current and last bullet if we
-      // need to remove the current bullet
-      this.pool[4*i] = this.pool[4*(this.end-1)];
-      this.pool[4*i+1] = this.pool[4*(this.end-1)+1];
-      this.pool[4*i+2] = this.pool[4*(this.end-1)+2];
-      this.pool[4*i+3] = this.pool[4*(this.end-1)+3];
-      // Reduce the total number of bullets by 1
-      this.end--;
-      // Reduce our iterator by 1 so that we update the
-      // freshly swapped bullet.
-      i--;
-    }
-  }
-}
-
-/**
- * @function render
- * Renders all bullets in our array.
- * @param {DOMHighResTimeStamp} elapsedTime
- * @param {CanvasRenderingContext2D} ctx
- */
-BulletPool.prototype.render = function(elapsedTime, ctx) {
+Bullet.prototype.render = function(elapsedTime, ctx) {
   // Render the bullets as a single path
   ctx.save();
-  ctx.beginPath();
-  ctx.fillStyle = "white";
-  for(var i = 0; i < this.end; i++) {
-    ctx.moveTo(this.pool[4*i], this.pool[4*i+1]);
-    ctx.arc(this.pool[4*i], this.pool[4*i+1], 2, 0, 2*Math.PI);
-  }
-  ctx.fill();
+  ctx.translate(this.position.x, this.position.y);
+  BulletDefinition.getTypeDefinition(this.type).render(elapsedTime, ctx);
   ctx.restore();
 }
+Bullet.prototype.retain = function(){
+  var bounds = this.position.r * 2;
+  return !this.destroy && window.camera.onScreen({x: this.position.x, y: this.position.y, width: bounds, height: bounds});
+}
+Bullet.prototype.collided = function(entity) {
+}
 
-},{}],3:[function(require,module,exports){
+},{"./bullet_types":3}],3:[function(require,module,exports){
+"use strict";
+
+module.exports = exports = (function(){
+  var Types = {
+    Simple: 0,
+    Simple2: 1
+  }
+
+  var typeDefinition = [
+    {
+      name: "Pistol",
+      damage: 1,
+      radius: 2,
+      render: function(elapsedTime, ctx){
+        ctx.beginPath();
+        ctx.fillStyle = "green";
+        ctx.arc(0, 0, 2, 0, 2*Math.PI);
+        ctx.fill();
+      }
+    },
+    {
+      name: "King's Pistol",
+      damage: 2,
+      radius: 4,
+      render: function(elapsedTime, ctx){
+        ctx.beginPath();
+        ctx.fillStyle = "red";
+        ctx.arc(0, 0, 4, 0, 2*Math.PI);
+        ctx.fill();
+      }
+    }
+  ]
+
+  var getTypeDefinition = function(type){
+    return typeDefinition[type];
+  }
+
+  return {
+    Types: Types,
+    getTypeDefinition: getTypeDefinition
+  }
+
+})();
+
+},{}],4:[function(require,module,exports){
 "use strict";
 
 /* Classes and Libraries */
@@ -392,7 +385,373 @@ Camera.prototype.toWorldCoordinates = function(screenCoordinates) {
   return Vector.add(screenCoordinates, this);
 }
 
-},{"./vector":8}],4:[function(require,module,exports){
+},{"./vector":12}],5:[function(require,module,exports){
+"use strict";
+
+/* Classes and Libraries */
+const Vector = require('./vector');
+const Bullet = require('./bullet');
+const Player = require('./player');
+const ExplosionParticles = require('./explosion_particles');
+const BulletDefinition = require('./bullet_types');
+
+/* Constants */
+const PLAYER_SPEED = 5;
+const BULLET_SPEED = 10;
+
+/**
+ * @module Enemy
+ * A class representing a Enemy
+ */
+module.exports = exports = Enemy;
+
+/**
+ * @constructor Enemy
+ * Creates a Enemy
+ * @param {EntityManager} em
+ */
+function Enemy(em, player) {
+  this.entityManager = em;
+  this.angle = 0;
+  this.position = {x: 220, y: 7775, r: 12};
+  this.velocity = {x: 0, y: 1};
+  this.img = new Image()
+  this.img.src = 'tilesets/tyrian.shp.007D3C.png';
+
+
+  this.health = 3;
+  this.weapon = BulletDefinition.Types.Simple;
+
+  this.timeSinceDeath = 0;
+  this.explosionParticles = new ExplosionParticles(1000);
+
+  this.color = 'green';
+
+  this.fireTimeout = 1000;
+  this.player = player;
+}
+
+/**
+ * @function update
+ * Updates the Enemy based on the supplied input
+ * @param {DOMHighResTimeStamp} elapedTime
+ * boolean properties: up, left, right, down
+ */
+Enemy.prototype.update = function(elapsedTime) {
+  if(this.health <= 0 && this.timeSinceDeath < 2000){
+    // Draw particle death
+
+    this.explosionParticles.emit({x: -6, y: 0});
+    this.explosionParticles.emit({x: 6, y: -6});
+    this.explosionParticles.emit({x: 6, y: 6});
+
+    this.explosionParticles.update(elapsedTime);
+    this.timeSinceDeath += elapsedTime;
+    return
+  }
+
+  // Fire if necessary
+  this.fireTimeout -= elapsedTime;
+  if(this.fireTimeout <= 0){
+    this.fireBullet();
+    this.fireTimeout += 1000;
+  }
+
+  // move the enemy
+  this.position.x += this.velocity.x;
+  this.position.y += this.velocity.y;
+
+}
+
+/**
+ * @function render
+ * Renders the Enemy helicopter in world coordinates
+ * @param {DOMHighResTimeStamp} elapsedTime
+ * @param {CanvasRenderingContext2D} ctx
+ */
+Enemy.prototype.render = function(elapasedTime, ctx) {
+  var offset = this.angle * 24;
+  ctx.save();
+  ctx.translate(this.position.x, this.position.y);
+  if(window.debug){
+    ctx.strokeStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, this.position.r, 0, 2*Math.PI);
+    ctx.stroke();
+    this.color = 'green';
+  }
+
+  if(this.health <= 0 && this.timeSinceDeath < 2000){
+    this.explosionParticles.render(elapasedTime, ctx);
+  }else if(this.health > 0){
+    ctx.drawImage(this.img, 48+offset, 57, 24, 28, -12, -14, 24, 28);
+  }
+
+  ctx.restore();
+}
+
+Enemy.prototype.retain = function(){
+  return window.camera.onScreen({x: this.position.x, y: this.position.y, width: this.position.r * 2, height:  this.position.r * 2}) &&
+          (this.health > 0 || (this.health <= 0 && this.timeSinceDeath < 2000));
+}
+/**
+ * @function fireBullet
+ * Fires a bullet
+ * @param {Vector} direction
+ */
+Enemy.prototype.fireBullet = function() {
+  var position = {x: this.position.x, y: this.position.y};
+  var velocity = Vector.scale(Vector.normalize({x: 0, y: 1}), BULLET_SPEED);
+  this.entityManager.addEntity(new Bullet(position, velocity, this.weapon, true));
+}
+
+Enemy.prototype.damage = function(amount) {
+  this.health -= amount;
+}
+
+Enemy.prototype.collided = function(entity) {
+  if(entity instanceof Bullet){
+    if(!entity.isEnemy){
+      var damage = BulletDefinition.getTypeDefinition(entity.type).damage
+      this.damage(damage);
+      entity.destroy = true;
+      this.player.score += damage;
+    }
+    return
+  }
+}
+
+},{"./bullet":2,"./bullet_types":3,"./explosion_particles":7,"./player":10,"./vector":12}],6:[function(require,module,exports){
+"use strict";
+
+/**
+ * @module exports the Car class
+ */
+module.exports = exports = EntityManager;
+
+/**
+ * @constructor car
+ * Creates a new EntityManager object
+ */
+function EntityManager() {
+  this.entities = [];
+}
+
+EntityManager.prototype.addEntity = function(entity) {
+  this.entities.push(entity);
+}
+
+EntityManager.prototype.destroyEntity = function(entity){
+  var idx = this.entities.indexOf(entity);
+  this.entities.splice(idx, 1);
+}
+
+EntityManager.prototype.update = function(elapsedTime) {
+  var toBeDestroyed = [];
+  var self = this;
+  this.entities.forEach(function(entity){
+    if(entity.retain()){
+      entity.update(elapsedTime);
+    }
+    else{
+      toBeDestroyed.push(entity);
+    }
+  });
+
+  toBeDestroyed.forEach(function(entity){
+    self.destroyEntity(entity);
+  });
+
+  this.entities.sort(function(a,b){return a.position.x - b.position.x});
+
+  // The active list will hold all balls
+  // we are currently considering for collisions
+  var active = [];
+
+  // The potentially colliding list will hold
+  // all pairs of balls that overlap in the x-axis,
+  // and therefore potentially collide
+  var potentiallyColliding = [];
+
+  // For each ball in the axis list, we consider it
+  // in order
+  this.entities.forEach(function(entity, aindex){
+    // remove balls from the active list that are
+    // too far away from our current ball to collide
+    // The Array.prototype.filter() method will return
+    // an array containing only elements for which the
+    // provided function's return value was true -
+    // in this case, all balls that are closer than 30
+    // units to our current ball on the x-axis
+    active = active.filter(function(oentity){
+      return entity.position.x - oentity.position.x  < entity.position.r + oentity.position.r;
+    });
+    // Since only balls within colliding distance of
+    // our current ball are left in the active list,
+    // we pair them with the current ball and add
+    // them to the potentiallyColliding array.
+    active.forEach(function(oentity, bindex){
+      potentiallyColliding.push({a: oentity, b: entity});
+    });
+    // Finally, we add our current ball to the active
+    // array to consider it in the next pass down the
+    // axisList
+    active.push(entity);
+  });
+
+  // At this point we have a potentaillyColliding array
+  // containing all pairs overlapping in the x-axis.  Now
+  // we want to check for REAL collisions between these pairs.
+  // We'll store those in our collisions array.
+  var collisions = [];
+  potentiallyColliding.forEach(function(pair){
+    // Calculate the distance between balls; we'll keep
+    // this as the squared distance, as we just need to
+    // compare it to a distance equal to the radius of
+    // both balls summed.  Squaring this second value
+    // is less computationally expensive than taking
+    // the square root to get the actual distance.
+    // In fact, we can cheat a bit more and use a constant
+    // for the sum of radii, as we know the radius of our
+    // balls won't change.
+    var distSquared =
+      Math.pow(pair.a.position.x - pair.b.position.x, 2) +
+      Math.pow(pair.a.position.y - pair.b.position.y, 2);
+    // (15 + 15)^2 = 900 -> sum of two balls' raidius squared
+    if(distSquared < Math.pow(pair.a.position.r + pair.b.position.r, 2)) {
+      // Color the collision pair for visual debugging
+      pair.a.color = 'red';
+      pair.b.color = 'red';
+      // Push the colliding pair into our collisions array
+      collisions.push(pair);
+    }
+  });
+
+  collisions.forEach(function(pair){
+    pair.a.collided(pair.b);
+    pair.b.collided(pair.a);
+  })
+}
+
+EntityManager.prototype.render = function(elapsedTime, ctx) {
+  this.entities.forEach(function(entity){
+    entity.render(elapsedTime, ctx);
+  });
+}
+
+},{}],7:[function(require,module,exports){
+"use strict";
+
+/**
+ * @module ExplosionParticles
+ * A class for managing a particle engine that
+ * emulates a smoke trail
+ */
+module.exports = exports = ExplosionParticles;
+
+/**
+ * @constructor ExplosionParticles
+ * Creates a ExplosionParticles engine of the specified size
+ * @param {uint} size the maximum number of particles to exist concurrently
+ */
+function ExplosionParticles(maxSize) {
+  this.pool = new Float32Array(3 * maxSize);
+  this.start = 0;
+  this.end = 0;
+  this.wrapped = false;
+  this.max = maxSize;
+}
+
+/**
+ * @function emit
+ * Adds a new particle at the given position
+ * @param {Vector} position
+*/
+ExplosionParticles.prototype.emit = function(position) {
+  if(this.end != this.max) {
+    this.pool[3*this.end] = position.x;
+    this.pool[3*this.end+1] = position.y;
+    this.pool[3*this.end+2] = 0.0;
+    this.end++;
+  } else {
+    this.pool[3] = position.x;
+    this.pool[4] = position.y;
+    this.pool[5] = 0.0;
+    this.end = 1;
+  }
+}
+
+/**
+ * @function update
+ * Updates the particles
+ * @param {DOMHighResTimeStamp} elapsedTime
+ */
+ExplosionParticles.prototype.update = function(elapsedTime) {
+  function updateParticle(i) {
+    this.pool[3*i+2] += elapsedTime;
+    if(this.pool[3*i+2] > 2000) this.start = i;
+  }
+  var i;
+  if(this.wrapped) {
+    for(i = 0; i < this.end; i++){
+      updateParticle.call(this, i);
+    }
+    for(i = this.start; i < this.max; i++){
+      updateParticle.call(this, i);
+    }
+  } else {
+    for(i = this.start; i < this.end; i++) {
+      updateParticle.call(this, i);
+    }
+  }
+}
+
+/**
+ * @function render
+ * Renders all bullets in our array.
+ * @param {DOMHighResTimeStamp} elapsedTime
+ * @param {CanvasRenderingContext2D} ctx
+ */
+ExplosionParticles.prototype.render = function(elapsedTime, ctx) {
+  function renderParticle(i){
+    var alpha = (this.pool[3*i+2] / 1000) / (this.end/3);
+    if(alpha < 0) alpha = 0;
+    var radius = 0.1 * this.pool[3*i+2];
+    if(radius > 20) radius = 20;
+    ctx.beginPath();
+    ctx.arc(
+      this.pool[3*i],   // X position
+      this.pool[3*i+1], // y position
+      radius, // radius
+      0,
+      2*Math.PI
+    );
+    var percentOfColor = Math.floor((this.pool[3*i+2] / 1000) * 200)
+
+    var r = 232 - percentOfColor
+    var g = 49 - percentOfColor
+    var b = 20 - percentOfColor
+    ctx.fillStyle = 'rgba(' + r + ', ' + g + ', ' + b + ',' + alpha + ')';
+    ctx.fill();
+  }
+
+  // Render the particles individually
+  var i;
+  if(this.wrapped) {
+    for(i = 0; i < this.end; i++){
+      renderParticle.call(this, i);
+    }
+    for(i = this.start; i < this.max; i++){
+      renderParticle.call(this, i);
+    }
+  } else {
+    for(i = this.start; i < this.end; i++) {
+      renderParticle.call(this, i);
+    }
+  }
+}
+
+},{}],8:[function(require,module,exports){
 "use strict";
 
 /**
@@ -450,12 +809,14 @@ Game.prototype.loop = function(newTime) {
   this.frontCtx.drawImage(this.backBuffer, 0, 0);
 }
 
-},{}],5:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 "use strict";
 
-// Tilemap engine defined using the Module pattern
-module.exports = exports = Hud;
+const Tilemap = require('./tilemap');
+const mapdata = require('../tilemaps/hud.json');
+const BulletDefinition = require('./bullet_types');
 
+module.exports = exports = Hud;
 
 function Hud(player, frame){
   this.frame = {
@@ -463,27 +824,128 @@ function Hud(player, frame){
     origin: {x: frame.x, y: frame.y}
   }
   this.player = player
+  this.tilemap = new Tilemap(mapdata, {width: frame.width, height: frame.height}, true, {});
 }
 
 Hud.prototype.render = function(ctx){
   ctx.save();
   ctx.translate(this.frame.origin.x, this.frame.origin.y);
 
-  ctx.fillStyle = 'green';
-  ctx.fillRect(0, 0, this.frame.size.width, this.frame.size.height);
-
-  ctx.fillStyle = 'black';
-  ctx.font="20px Georgia";
-  ctx.fillText("Hello World!",10,20);
+  drawTitle(this, ctx);
+  drawScore(this, ctx);
+  drawHealth(this, ctx);
+  drawWeapon(this, ctx);
+  drawProgress(this, ctx);
+  drawHudOverlay(this, ctx);
 
   ctx.restore();
 }
 
-},{}],6:[function(require,module,exports){
+function drawWeapon(self, ctx){
+  ctx.fillStyle = 'green';
+  ctx.font="30px Garamond";
+  ctx.textAlign="center";
+
+  var centerX = Math.floor(self.frame.size.width / 2);
+  ctx.fillText("WEAPON", centerX, 95);
+
+  var weapon = BulletDefinition.getTypeDefinition(self.player.weapon);
+  // Draw details
+  ctx.font="20px Garamond";
+  ctx.fillText(weapon.name, centerX, 150);
+
+  ctx.font="15px Garamond";
+  ctx.fillText("Damage: " + weapon.damage, centerX, 175)
+}
+
+function drawProgress(self, ctx){
+  ctx.fillStyle = 'green';
+  ctx.font="30px Garamond";
+  ctx.textAlign="center";
+
+  var centerX = Math.floor(self.frame.size.width / 2);
+  ctx.fillText("PROGRESS", centerX, 232);
+
+  ctx.font="40px Garamond";
+
+  var percent = Math.floor(((8375 - self.player.position.y) / 8375) * 100);
+  ctx.fillText(percent + '%', centerX, 305);
+}
+
+function drawTitle(self, ctx){
+  ctx.fillStyle = 'green';
+  ctx.font="30px Garamond";
+  ctx.textAlign="center";
+
+  var centerX = Math.floor(self.frame.size.width / 2);
+  ctx.fillText("YEERYAN", centerX, 373);
+}
+
+function drawHealth(self, ctx){
+  ctx.fillStyle = 'green';
+  ctx.font="30px Garamond";
+  ctx.textAlign="center";
+
+  var centerX = Math.floor(self.frame.size.width / 2);
+  ctx.fillText("H", centerX, 450);
+  ctx.fillText("E", centerX, 475);
+  ctx.fillText("A", centerX, 500);
+  ctx.fillText("L", centerX, 525);
+  ctx.fillText("T", centerX, 550);
+  ctx.fillText("H", centerX, 575);
+
+  var percentFull = self.player.health / self.player.maxHealth;
+
+  var grad = ctx.createLinearGradient(50, 392, 50, 392+280);
+  grad.addColorStop(0, "green");
+  grad.addColorStop(1, "yellow");
+
+  ctx.fillStyle = grad;
+
+  // left health Bar
+  var height = 280 * (percentFull - 0.5) * 2;
+  ctx.fillRect(0, 392 + (280 - height), 96, height);
+
+  var grad2 = ctx.createLinearGradient(200, 392, 200, 392+280);
+  grad2.addColorStop(0, "yellow");
+  grad2.addColorStop(1, "red");
+
+  ctx.fillStyle = grad2;
+
+  // Right health Bar
+  var percentH = (percentFull >= 0.5) ? 1 : percentFull * 2
+  var height2 = 280 * percentH;
+  ctx.fillRect(144, 392 + (280 - height2), 96, height2);
+
+}
+
+function drawScore(self, ctx) {
+  ctx.fillStyle = 'green';
+  ctx.font="30px Garamond";
+  ctx.textAlign="center";
+
+  ctx.fillText("SCORE",75,37);
+  ctx.fillText(self.player.score, 190, 37);
+}
+
+function drawHudOverlay(self, ctx){
+  //Draw Hud overlay on top of everything
+  //Shift over by one tile so the edges line up correctly
+  ctx.save();
+  ctx.translate(-self.tilemap.tileWidth, 0);
+  self.tilemap.render(ctx);
+  ctx.restore();
+}
+
+},{"../tilemaps/hud.json":14,"./bullet_types":3,"./tilemap":11}],10:[function(require,module,exports){
 "use strict";
 
 /* Classes and Libraries */
 const Vector = require('./vector');
+const ExplosionParticles = require('./explosion_particles');
+const Bullet = require('./bullet');
+const Enemy = require('./enemy');
+const BulletDefinition = require('./bullet_types');
 
 /* Constants */
 const PLAYER_SPEED = 5;
@@ -498,17 +960,25 @@ module.exports = exports = Player;
 /**
  * @constructor Player
  * Creates a player
- * @param {BulletPool} bullets the bullet pool
+ * @param {EntityManager} em
  */
-function Player(bullets) {
-  this.bullets = bullets;
+function Player(em) {
+  this.entityManager = em;
   this.angle = 0;
   this.position = {x: 200, y: 8375, r: 12};
   this.velocity = {x: 0, y: 0};
   this.img = new Image()
   this.img.src = 'tilesets/tyrian.shp.007D3C.png';
 
+  this.maxHealth = 100;
   this.health = 100;
+  this.score = 0;
+  this.weapon = BulletDefinition.Types.Simple2;
+
+  this.timeSinceDeath = 0;
+  this.explosionParticles = new ExplosionParticles(1000);
+
+  this.color = 'green';
 }
 
 /**
@@ -518,7 +988,20 @@ function Player(bullets) {
  * @param {Input} input object defining input, must have
  * boolean properties: up, left, right, down
  */
-Player.prototype.update = function(elapsedTime, input) {
+Player.prototype.update = function(elapsedTime) {
+  var input = window.input;
+
+  if(this.health <= 0 && this.timeSinceDeath < 2000){
+    // Draw particle death
+
+    this.explosionParticles.emit({x: -6, y: 0});
+    this.explosionParticles.emit({x: 6, y: -6});
+    this.explosionParticles.emit({x: 6, y: 6});
+
+    this.explosionParticles.update(elapsedTime);
+    this.timeSinceDeath += elapsedTime;
+    return
+  }
 
   // set the velocity
   this.velocity.x = 0;
@@ -554,16 +1037,26 @@ Player.prototype.render = function(elapasedTime, ctx) {
   var offset = this.angle * 24;
   ctx.save();
   ctx.translate(this.position.x, this.position.y);
-  ctx.strokeStyle = 'red';
   if(window.debug){
+    ctx.strokeStyle = this.color;
     ctx.beginPath();
     ctx.arc(0, 0, this.position.r, 0, 2*Math.PI);
     ctx.stroke();
+    this.color = 'green';
   }
-  ctx.drawImage(this.img, 48+offset, 57, 24, 28, -12, -14, 24, 28);
+
+  if(this.health <= 0 && this.timeSinceDeath < 2000){
+    this.explosionParticles.render(elapasedTime, ctx);
+  }else if(this.health > 0){
+    ctx.drawImage(this.img, 48+offset, 57, 24, 28, -12, -14, 24, 28);
+  }
+
   ctx.restore();
 }
 
+Player.prototype.retain = function(){
+  return true;
+}
 /**
  * @function fireBullet
  * Fires a bullet
@@ -572,14 +1065,29 @@ Player.prototype.render = function(elapasedTime, ctx) {
 Player.prototype.fireBullet = function() {
   var position = {x: this.position.x, y: this.position.y}; //Vector.add(this.position, {x:30, y:30});
   var velocity = Vector.scale(Vector.normalize({x: 0, y: -1}), BULLET_SPEED);
-  this.bullets.add(position, velocity);
+  this.entityManager.addEntity(new Bullet(position, velocity, this.weapon, false));
 }
 
 Player.prototype.damage = function(amount) {
   this.health -= amount;
 }
 
-},{"./vector":8}],7:[function(require,module,exports){
+Player.prototype.collided = function(entity) {
+  if(entity instanceof Bullet){
+    if(entity.isEnemy){
+      this.damage(BulletDefinition.getTypeDefinition(entity.type).damage);
+      entity.destroy = true;
+    }
+  }
+
+  if(entity instanceof Enemy && entity.health > 0){
+    this.damage(20);
+    entity.health = 0;
+    this.score += 20;
+  }
+}
+
+},{"./bullet":2,"./bullet_types":3,"./enemy":5,"./explosion_particles":7,"./vector":12}],11:[function(require,module,exports){
 "use strict";
 
 // Tilemap engine defined using the Module pattern
@@ -725,7 +1233,7 @@ Tilemap.prototype.tileAt = function(x, y, layer) {
   return this.tiles[this.layers[layer].data[x + y*this.mapWidth] - 1];
 }
 
-},{}],8:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 "use strict";
 
 /**
@@ -822,7 +1330,7 @@ function normalize(a) {
   return {x: a.x / mag, y: a.y / mag};
 }
 
-},{}],9:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 module.exports={ "height":300,
  "layers":[
         {
@@ -1215,7 +1723,43 @@ module.exports={ "height":300,
  "version":1,
  "width":32
 }
-},{}],10:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
+module.exports={ "height":24,
+ "layers":[
+        {
+         "data":[103, 94, 92, 92, 92, 92, 95, 94, 92, 92, 95, 103, 104, 112, 112, 112, 112, 105, 104, 112, 112, 105, 103, 94, 92, 92, 92, 92, 92, 92, 92, 92, 95, 103, 104, 112, 112, 112, 112, 112, 112, 112, 112, 105, 103, 94, 92, 92, 92, 92, 92, 92, 92, 92, 95, 103, 101, 0, 0, 0, 0, 0, 0, 0, 0, 103, 103, 104, 112, 112, 112, 112, 112, 112, 112, 112, 105, 103, 94, 92, 92, 92, 92, 92, 92, 92, 92, 95, 103, 104, 112, 112, 112, 112, 112, 112, 112, 112, 105, 103, 94, 92, 92, 92, 92, 92, 92, 92, 92, 95, 103, 101, 0, 0, 0, 0, 0, 0, 0, 0, 103, 103, 104, 112, 112, 112, 112, 112, 112, 112, 112, 105, 103, 94, 92, 92, 92, 92, 92, 92, 92, 92, 95, 103, 104, 112, 112, 112, 112, 112, 112, 112, 112, 105, 103, 94, 92, 92, 95, 94, 95, 94, 92, 92, 95, 103, 101, 0, 0, 103, 101, 103, 101, 0, 0, 103, 103, 101, 0, 0, 103, 101, 103, 101, 0, 0, 103, 103, 101, 0, 0, 103, 101, 103, 101, 0, 0, 103, 103, 101, 0, 0, 103, 101, 103, 101, 0, 0, 103, 103, 101, 0, 0, 103, 101, 103, 101, 0, 0, 103, 103, 101, 0, 0, 103, 101, 103, 101, 0, 0, 103, 103, 101, 0, 0, 103, 104, 105, 101, 0, 0, 103, 103, 101, 0, 0, 103, 149, 150, 101, 0, 0, 103, 103, 104, 112, 112, 105, 159, 160, 104, 112, 112, 105],
+         "height":24,
+         "name":"Tile Layer 1",
+         "opacity":1,
+         "type":"tilelayer",
+         "visible":true,
+         "width":11,
+         "x":0,
+         "y":0
+        }],
+ "nextobjectid":1,
+ "orientation":"orthogonal",
+ "renderorder":"right-down",
+ "tileheight":28,
+ "tilesets":[
+        {
+         "columns":10,
+         "firstgid":1,
+         "image":".\/tilesets\/shapesz.png",
+         "imageheight":1736,
+         "imagewidth":240,
+         "margin":0,
+         "name":"shapesz",
+         "spacing":0,
+         "tilecount":620,
+         "tileheight":28,
+         "tilewidth":24
+        }],
+ "tilewidth":24,
+ "version":1,
+ "width":11
+}
+},{}],15:[function(require,module,exports){
 module.exports={ "height":500,
  "layers":[
         {
@@ -1319,7 +1863,7 @@ module.exports={ "height":500,
  "version":1,
  "width":32
 }
-},{}],11:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 module.exports={ "height":700,
  "layers":[
         {
