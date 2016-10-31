@@ -6,6 +6,7 @@ const Bullet = require('./bullet');
 const Player = require('./player');
 const ExplosionParticles = require('./explosion_particles');
 const BulletDefinition = require('./bullet_types');
+const EnemyDefinition = require('./enemy_types');
 
 /* Constants */
 const PLAYER_SPEED = 5;
@@ -22,25 +23,28 @@ module.exports = exports = Enemy;
  * Creates a Enemy
  * @param {EntityManager} em
  */
-function Enemy(em, player) {
+function Enemy(em, player, position) {
   this.entityManager = em;
   this.angle = 0;
-  this.position = {x: 220, y: 7775, r: 12};
-  this.velocity = {x: 0, y: 1};
+  this.position = {x: position.x, y: position.y, r: 12};
   this.img = new Image()
   this.img.src = 'tilesets/tyrian.shp.007D3C.png';
-
-
-  this.health = 3;
-  this.weapon = BulletDefinition.Types.Simple;
 
   this.timeSinceDeath = 0;
   this.explosionParticles = new ExplosionParticles(1000);
 
   this.color = 'green';
 
-  this.fireTimeout = 1000;
   this.player = player;
+
+
+  this.typeDef = EnemyDefinition.generate();
+  this.aim = this.typeDef.aim;
+  this.velocity = this.typeDef.velocity;
+  this.frame = this.typeDef.frame;
+  this.weapon = this.typeDef.weapon;
+  this.health = this.typeDef.health;
+  this.fireTimeout = this.typeDef.fireTimeout;
 }
 
 /**
@@ -69,6 +73,8 @@ Enemy.prototype.update = function(elapsedTime) {
     this.fireTimeout += 1000;
   }
 
+  this.typeDef.update(this, elapsedTime);
+
   // move the enemy
   this.position.x += this.velocity.x;
   this.position.y += this.velocity.y;
@@ -85,6 +91,8 @@ Enemy.prototype.render = function(elapasedTime, ctx) {
   var offset = this.angle * 24;
   ctx.save();
   ctx.translate(this.position.x, this.position.y);
+  ctx.rotate(Math.PI);
+
   if(window.debug){
     ctx.strokeStyle = this.color;
     ctx.beginPath();
@@ -96,7 +104,7 @@ Enemy.prototype.render = function(elapasedTime, ctx) {
   if(this.health <= 0 && this.timeSinceDeath < 2000){
     this.explosionParticles.render(elapasedTime, ctx);
   }else if(this.health > 0){
-    ctx.drawImage(this.img, 48+offset, 57, 24, 28, -12, -14, 24, 28);
+    ctx.drawImage(this.img, 48+offset, 84 + (28*this.frame), 24, 28, -12, -14, 24, 28);
   }
 
   ctx.restore();
@@ -113,7 +121,10 @@ Enemy.prototype.retain = function(){
  */
 Enemy.prototype.fireBullet = function() {
   var position = {x: this.position.x, y: this.position.y};
-  var velocity = Vector.scale(Vector.normalize({x: 0, y: 1}), BULLET_SPEED);
+
+  var vel = (this.aim) ? Vector.subtract(this.player.position, position) : {x:0, y: 1}
+
+  var velocity = Vector.scale(Vector.normalize(vel), BULLET_SPEED);
   this.entityManager.addEntity(new Bullet(position, velocity, this.weapon, true));
 }
 

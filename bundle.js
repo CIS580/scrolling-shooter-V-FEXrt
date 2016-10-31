@@ -1,14 +1,14 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
-window.debug = true;
+window.debug = false;
 
 /* Classes and Libraries */
 const Game = require('./game');
 const Vector = require('./vector');
 const Camera = require('./camera');
 const Player = require('./player');
-const Enemy = require('./enemy');
+const EntitySpawner = require('./entity_spawner')
 const EntityManager = require('./entity_manager');
 const Hud = require('./hud');
 const Tilemap = require('./tilemap');
@@ -29,6 +29,7 @@ var input = {
 var camera = new Camera(canvas);
 var entityManager = new EntityManager();
 var player = new Player(entityManager);
+var entitySpawner = new EntitySpawner(entityManager, player);
 
 var tilemaps = [];
 var hud = new Hud(player, {x: 768, y: 0, width: canvas.width - 768, height: canvas.height});
@@ -37,7 +38,6 @@ window.camera = camera;
 window.input = input;
 
 entityManager.addEntity(player);
-entityManager.addEntity(new Enemy(entityManager, player));
 
 tilemaps.push(new Tilemap(mapdataB1, canvas, true, {
   onload: function() {
@@ -96,6 +96,9 @@ window.onkeydown = function(event) {
     case "d":
       input.right = true;
       event.preventDefault();
+      break;
+    case "p":
+      game.pause(true);
       break;
   }
 }
@@ -160,6 +163,7 @@ function update(elapsedTime) {
   tilemaps[2].moveTo({x:0, y: camera.y * (7/3)});
 
   entityManager.update(elapsedTime);
+  entitySpawner.update(elapsedTime);
 }
 
 /**
@@ -210,7 +214,7 @@ function normalizeMouseCoord(event){
   return {x: x, y: y};
 }
 
-},{"../tilemaps/background3.json":13,"../tilemaps/middleground3.json":15,"../tilemaps/topground3.json":16,"./camera":4,"./enemy":5,"./entity_manager":6,"./game":8,"./hud":9,"./player":10,"./tilemap":11,"./vector":12}],2:[function(require,module,exports){
+},{"../tilemaps/background3.json":16,"../tilemaps/middleground3.json":18,"../tilemaps/topground3.json":19,"./camera":4,"./entity_manager":7,"./entity_spawner":8,"./game":10,"./hud":11,"./player":12,"./tilemap":14,"./vector":15}],2:[function(require,module,exports){
 "use strict";
 
 const BulletDefinition = require('./bullet_types');
@@ -235,7 +239,7 @@ function Bullet(position, velocity, type, isEnemy) {
   this.velocity = {x: velocity.x, y: velocity.y};
   this.type = type;
   this.isEnemy = isEnemy;
-  this.position.r = BulletDefinition.getTypeDefinition(this.type).radius
+  this.position.r = BulletDefinition.getTypeDefinition(this.type).renderSource.width / 2;
   this.destroy = false;
 }
 
@@ -248,13 +252,24 @@ Bullet.prototype.render = function(elapsedTime, ctx) {
   // Render the bullets as a single path
   ctx.save();
   ctx.translate(this.position.x, this.position.y);
-  BulletDefinition.getTypeDefinition(this.type).render(elapsedTime, ctx);
+
+  if(this.isEnemy) ctx.rotate(Math.PI);
+
+  var source = BulletDefinition.getTypeDefinition(this.type).renderSource;
+
+  ctx.drawImage(
+    BulletDefinition.tileset,
+    source.x, source.y, source.width, source.height,
+    -source.width/2, -source.height/2, source.width, source.height);
+
   ctx.restore();
 }
+
 Bullet.prototype.retain = function(){
   var bounds = this.position.r * 2;
   return !this.destroy && window.camera.onScreen({x: this.position.x, y: this.position.y, width: bounds, height: bounds});
 }
+
 Bullet.prototype.collided = function(entity) {
 }
 
@@ -263,33 +278,92 @@ Bullet.prototype.collided = function(entity) {
 
 module.exports = exports = (function(){
   var Types = {
-    Simple: 0,
-    Simple2: 1
+    Pistol: 0,
+    Pistol2: 1,
+    Pistol3: 2,
+    KingsPistol: 3,
+    Beam: 4,
+    Beam2: 5,
+    Blaster: 6,
+    Blaster2: 7,
+    Beam3: 8,
+    KingsBeam: 9,
+    Cannon: 10,
+    Cannon2: 11,
+    KingsCannon: 12,
+    Count: 13
   }
+
+  var image = new Image();
+  image.src = 'tilesets/projectiles.png';
 
   var typeDefinition = [
     {
       name: "Pistol",
       damage: 1,
-      radius: 2,
-      render: function(elapsedTime, ctx){
-        ctx.beginPath();
-        ctx.fillStyle = "green";
-        ctx.arc(0, 0, 2, 0, 2*Math.PI);
-        ctx.fill();
-      }
+      renderSource: {x: 0, y: 42, width: 12, height: 14}
+    },
+    {
+      name: "Pistol II",
+      damage: 2,
+      renderSource: {x: 12, y: 42, width: 12, height: 14}
+    },
+    {
+      name: "Pistol III",
+      damage: 3,
+      renderSource: {x: 24, y: 42, width: 12, height: 14}
     },
     {
       name: "King's Pistol",
-      damage: 2,
-      radius: 4,
-      render: function(elapsedTime, ctx){
-        ctx.beginPath();
-        ctx.fillStyle = "red";
-        ctx.arc(0, 0, 4, 0, 2*Math.PI);
-        ctx.fill();
-      }
+      damage: 5,
+      renderSource: {x: 48, y: 42, width: 12, height: 14}
+    },
+    {
+      name: "Beam",
+      damage: 10,
+      renderSource: {x: 60, y: 42, width: 12, height: 14}
+    },
+    {
+      name: "Beam II",
+      damage: 15,
+      renderSource: {x: 96, y: 42, width: 12, height: 14}
+    },
+    {
+      name: "Blaster",
+      damage: 20,
+      renderSource: {x: 72, y: 42, width: 12, height: 14}
+    },
+    {
+      name: "Blaster II",
+      damage: 25,
+      renderSource: {x: 84, y: 42, width: 12, height: 14}
+    },
+    {
+      name: "Beam III",
+      damage: 30,
+      renderSource: {x: 180, y: 42, width: 12, height: 14}
+    },
+    {
+      name: "King's Beam",
+      damage: 30,
+      renderSource: {x: 108, y: 98, width: 24, height: 14}
+    },
+    {
+      name: "Cannon",
+      damage: 40,
+      renderSource: {x: 12, y: 70, width: 12, height: 42}
+    },
+    {
+      name: "Cannon II",
+      damage: 45,
+      renderSource: {x: 60, y: 70, width: 12, height: 42}
+    },
+    {
+      name: "King's Cannon",
+      damage: 50,
+      renderSource: {x: 0, y: 150, width: 12, height: 56}
     }
+
   ]
 
   var getTypeDefinition = function(type){
@@ -298,7 +372,8 @@ module.exports = exports = (function(){
 
   return {
     Types: Types,
-    getTypeDefinition: getTypeDefinition
+    getTypeDefinition: getTypeDefinition,
+    tileset: image
   }
 
 })();
@@ -385,7 +460,7 @@ Camera.prototype.toWorldCoordinates = function(screenCoordinates) {
   return Vector.add(screenCoordinates, this);
 }
 
-},{"./vector":12}],5:[function(require,module,exports){
+},{"./vector":15}],5:[function(require,module,exports){
 "use strict";
 
 /* Classes and Libraries */
@@ -394,6 +469,7 @@ const Bullet = require('./bullet');
 const Player = require('./player');
 const ExplosionParticles = require('./explosion_particles');
 const BulletDefinition = require('./bullet_types');
+const EnemyDefinition = require('./enemy_types');
 
 /* Constants */
 const PLAYER_SPEED = 5;
@@ -410,25 +486,28 @@ module.exports = exports = Enemy;
  * Creates a Enemy
  * @param {EntityManager} em
  */
-function Enemy(em, player) {
+function Enemy(em, player, position) {
   this.entityManager = em;
   this.angle = 0;
-  this.position = {x: 220, y: 7775, r: 12};
-  this.velocity = {x: 0, y: 1};
+  this.position = {x: position.x, y: position.y, r: 12};
   this.img = new Image()
   this.img.src = 'tilesets/tyrian.shp.007D3C.png';
-
-
-  this.health = 3;
-  this.weapon = BulletDefinition.Types.Simple;
 
   this.timeSinceDeath = 0;
   this.explosionParticles = new ExplosionParticles(1000);
 
   this.color = 'green';
 
-  this.fireTimeout = 1000;
   this.player = player;
+
+
+  this.typeDef = EnemyDefinition.generate();
+  this.aim = this.typeDef.aim;
+  this.velocity = this.typeDef.velocity;
+  this.frame = this.typeDef.frame;
+  this.weapon = this.typeDef.weapon;
+  this.health = this.typeDef.health;
+  this.fireTimeout = this.typeDef.fireTimeout;
 }
 
 /**
@@ -457,6 +536,8 @@ Enemy.prototype.update = function(elapsedTime) {
     this.fireTimeout += 1000;
   }
 
+  this.typeDef.update(this, elapsedTime);
+
   // move the enemy
   this.position.x += this.velocity.x;
   this.position.y += this.velocity.y;
@@ -473,6 +554,8 @@ Enemy.prototype.render = function(elapasedTime, ctx) {
   var offset = this.angle * 24;
   ctx.save();
   ctx.translate(this.position.x, this.position.y);
+  ctx.rotate(Math.PI);
+
   if(window.debug){
     ctx.strokeStyle = this.color;
     ctx.beginPath();
@@ -484,7 +567,7 @@ Enemy.prototype.render = function(elapasedTime, ctx) {
   if(this.health <= 0 && this.timeSinceDeath < 2000){
     this.explosionParticles.render(elapasedTime, ctx);
   }else if(this.health > 0){
-    ctx.drawImage(this.img, 48+offset, 57, 24, 28, -12, -14, 24, 28);
+    ctx.drawImage(this.img, 48+offset, 84 + (28*this.frame), 24, 28, -12, -14, 24, 28);
   }
 
   ctx.restore();
@@ -501,7 +584,10 @@ Enemy.prototype.retain = function(){
  */
 Enemy.prototype.fireBullet = function() {
   var position = {x: this.position.x, y: this.position.y};
-  var velocity = Vector.scale(Vector.normalize({x: 0, y: 1}), BULLET_SPEED);
+
+  var vel = (this.aim) ? Vector.subtract(this.player.position, position) : {x:0, y: 1}
+
+  var velocity = Vector.scale(Vector.normalize(vel), BULLET_SPEED);
   this.entityManager.addEntity(new Bullet(position, velocity, this.weapon, true));
 }
 
@@ -521,7 +607,63 @@ Enemy.prototype.collided = function(entity) {
   }
 }
 
-},{"./bullet":2,"./bullet_types":3,"./explosion_particles":7,"./player":10,"./vector":12}],6:[function(require,module,exports){
+},{"./bullet":2,"./bullet_types":3,"./enemy_types":6,"./explosion_particles":9,"./player":12,"./vector":15}],6:[function(require,module,exports){
+"use strict";
+
+module.exports = exports = (function(){
+  var generateTypeDefinition = function(){
+    var track = rand(5);
+    return {
+          frame: rand(5),
+          aim: (rand(2) == 0),
+          velocity: {x: (track == 3) ? 0 : rand(3)-1, y: (track == 3) ? 0 : rand(3)-1},
+          weapon: rand(13),
+          health: rand(25) + 1,
+          fireTimeout: rand(1500) + 500,
+          update: function(self, elapsedTime){
+            switch(track){
+              case 0:
+                trackPlayerX(self);
+                break;
+              case 1:
+                trackPlayerY(self);
+                break;
+              case 2:
+                trackPlayerXY(self);
+                break;
+          }
+        }
+      }
+  }
+
+  function trackPlayerX(self){
+    if(self.position.x > self.player.position.x) self.velocity.x = -1;
+    if(self.position.x < self.player.position.x) self.velocity.x = 1;
+    if(self.position.x == self.player.position.x) self.velocity.x = 0;
+  }
+
+  function trackPlayerY(self){
+    if(self.position.y > self.player.position.y) self.velocity.y = -1;
+    if(self.position.y < self.player.position.y) self.velocity.y = 1;
+    if(self.position.y == self.player.position.y) self.velocity.y = 0;
+  }
+
+  function trackPlayerXY(self){
+    trackPlayerX(self);
+    trackPlayerY(self);
+  }
+
+  function rand(max){
+    return Math.floor(Math.random() * max);
+  }
+
+  return {
+    generate: generateTypeDefinition
+  }
+
+})();
+
+},{}],7:[function(require,module,exports){
 "use strict";
 
 /**
@@ -639,7 +781,64 @@ EntityManager.prototype.render = function(elapsedTime, ctx) {
   });
 }
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
+"use strict";
+
+const Enemy = require('./enemy');
+const Powerup = require('./powerup');
+
+/**
+ * @module EntitySpawner
+ * A class representing a EntitySpawner
+ */
+module.exports = exports = EntitySpawner;
+
+/**
+ * @constructor EntitySpawner
+ * Creates a EntitySpawner
+ */
+function EntitySpawner(em, player) {
+  this.entityManager = em;
+  this.player = player;
+
+  this.timer = rand(1500) + 500;
+
+
+}
+
+EntitySpawner.prototype.update = function(elapsedTime){
+    this.timer -= elapsedTime;
+    if(this.timer <= 0){
+      this.timer = rand(1500) + 500;
+      (Math.random() > 0.5) ? spawnPowerup(this) : spawnEnemy(this);
+    }
+}
+
+function spawnPowerup(self){
+  self.entityManager.addEntity(new Powerup(self.player, generatePosition(self)));
+}
+
+function spawnEnemy(self){
+  self.entityManager.addEntity(new Enemy(self.entityManager, self.player, generatePosition(self)));
+}
+
+function generatePosition(self){
+  var pos = window.camera.toScreenCoordinates(self.player.position);
+
+  var x = rand(673);
+  var y = rand(1009);
+
+  if(pos.x == x) x += (rand(40) - 19);
+  if(pos.y == y) y += (rand(40) - 19);
+
+  return window.camera.toWorldCoordinates({x: x, y: y});
+}
+
+function rand(max){
+  return Math.floor(Math.random() * max);
+}
+
+},{"./enemy":5,"./powerup":13}],9:[function(require,module,exports){
 "use strict";
 
 /**
@@ -751,7 +950,7 @@ ExplosionParticles.prototype.render = function(elapsedTime, ctx) {
   }
 }
 
-},{}],8:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 "use strict";
 
 /**
@@ -809,7 +1008,7 @@ Game.prototype.loop = function(newTime) {
   this.frontCtx.drawImage(this.backBuffer, 0, 0);
 }
 
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 "use strict";
 
 const Tilemap = require('./tilemap');
@@ -878,7 +1077,7 @@ function drawTitle(self, ctx){
   ctx.textAlign="center";
 
   var centerX = Math.floor(self.frame.size.width / 2);
-  ctx.fillText("YEERYAN", centerX, 373);
+  ctx.fillText("Tyrian", centerX, 373);
 }
 
 function drawHealth(self, ctx){
@@ -937,7 +1136,7 @@ function drawHudOverlay(self, ctx){
   ctx.restore();
 }
 
-},{"../tilemaps/hud.json":14,"./bullet_types":3,"./tilemap":11}],10:[function(require,module,exports){
+},{"../tilemaps/hud.json":17,"./bullet_types":3,"./tilemap":14}],12:[function(require,module,exports){
 "use strict";
 
 /* Classes and Libraries */
@@ -973,7 +1172,7 @@ function Player(em) {
   this.maxHealth = 100;
   this.health = 100;
   this.score = 0;
-  this.weapon = BulletDefinition.Types.Simple2;
+  this.weapon = BulletDefinition.Types.Blaster2;
 
   this.timeSinceDeath = 0;
   this.explosionParticles = new ExplosionParticles(1000);
@@ -1048,7 +1247,7 @@ Player.prototype.render = function(elapasedTime, ctx) {
   if(this.health <= 0 && this.timeSinceDeath < 2000){
     this.explosionParticles.render(elapasedTime, ctx);
   }else if(this.health > 0){
-    ctx.drawImage(this.img, 48+offset, 57, 24, 28, -12, -14, 24, 28);
+    ctx.drawImage(this.img, 48+offset, 56, 24, 28, -12, -14, 24, 28);
   }
 
   ctx.restore();
@@ -1087,7 +1286,98 @@ Player.prototype.collided = function(entity) {
   }
 }
 
-},{"./bullet":2,"./bullet_types":3,"./enemy":5,"./explosion_particles":7,"./vector":12}],11:[function(require,module,exports){
+},{"./bullet":2,"./bullet_types":3,"./enemy":5,"./explosion_particles":9,"./vector":15}],13:[function(require,module,exports){
+"use strict";
+
+const BulletDefinition = require('./bullet_types');
+const Player = require('./player');
+/**
+ * @module Powerup
+ * A class representing a Powerup
+ */
+module.exports = exports = Powerup;
+
+/**
+ * @constructor Powerup
+ * Creates a Powerup
+ */
+function Powerup(player, position) {
+
+  this.Type = {
+    Plus1: 0,
+    Plus2: 1,
+    Down1: 2
+  }
+
+  this.position = {x: position.x, y: position.y, r: 6};
+
+  this.img = new Image()
+  this.img.src = 'tilesets/tyrian.shp.01673F.png';
+
+  this.consumed = false
+
+  this.player = player;
+
+  this.type = rand(3);
+
+  this.frame = 0;
+  this.timer = 0;
+}
+
+function rand(max){
+  return Math.floor(Math.random() * max);
+}
+
+/**
+ * @function update
+ * Updates the Powerup based on the supplied input
+ * @param {DOMHighResTimeStamp} elapedTime
+ * boolean properties: up, left, right, down
+ */
+Powerup.prototype.update = function(elapsedTime) {
+  this.timer += elapsedTime;
+  if(this.timer > 1000/16){
+    this.frame = (this.frame + 1) % 6
+    this.timer = 0;
+  }
+}
+
+/**
+ * @function render
+ * Renders the Powerup helicopter in world coordinates
+ * @param {DOMHighResTimeStamp} elapsedTime
+ * @param {CanvasRenderingContext2D} ctx
+ */
+Powerup.prototype.render = function(elapasedTime, ctx) {
+  ctx.save();
+  ctx.translate(this.position.x, this.position.y);
+
+  ctx.drawImage(
+    this.img,
+    this.frame * 24, 28 + (28*this.type), 24, 28,
+    -12, -14, 24, 28
+  );
+
+  ctx.restore();
+}
+
+Powerup.prototype.retain = function(){
+  return !this.consumed && window.camera.onScreen({x: this.position.x, y: this.position.y, width: this.position.r * 2, height:  this.position.r * 2})
+}
+
+Powerup.prototype.collided = function(entity) {
+  if(!this.consumed && entity instanceof Player){
+    var change = 0;
+    if(this.type == this.Type.Plus1) change = 1;
+    if(this.type == this.Type.Plus2) change = 2;
+    if(this.type == this.Type.Down1) change = -1;
+    if(entity.weapon + change < 0 || entity.weapon + change >= BulletDefinition.Types.Count) return;
+    entity.weapon += change;
+    this.consumed = true;
+  }
+}
+
+},{"./bullet_types":3,"./player":12}],14:[function(require,module,exports){
 "use strict";
 
 // Tilemap engine defined using the Module pattern
@@ -1233,7 +1523,7 @@ Tilemap.prototype.tileAt = function(x, y, layer) {
   return this.tiles[this.layers[layer].data[x + y*this.mapWidth] - 1];
 }
 
-},{}],12:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 "use strict";
 
 /**
@@ -1330,7 +1620,7 @@ function normalize(a) {
   return {x: a.x / mag, y: a.y / mag};
 }
 
-},{}],13:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 module.exports={ "height":300,
  "layers":[
         {
@@ -1723,7 +2013,7 @@ module.exports={ "height":300,
  "version":1,
  "width":32
 }
-},{}],14:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 module.exports={ "height":24,
  "layers":[
         {
@@ -1759,7 +2049,7 @@ module.exports={ "height":24,
  "version":1,
  "width":11
 }
-},{}],15:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 module.exports={ "height":500,
  "layers":[
         {
@@ -1863,7 +2153,7 @@ module.exports={ "height":500,
  "version":1,
  "width":32
 }
-},{}],16:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 module.exports={ "height":700,
  "layers":[
         {

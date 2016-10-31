@@ -33,7 +33,7 @@ function Player(em) {
   this.maxHealth = 100;
   this.health = 100;
   this.score = 0;
-  this.weapon = BulletDefinition.Types.Simple2;
+  this.weapon = BulletDefinition.Types.Blaster2;
 
   this.timeSinceDeath = 0;
   this.explosionParticles = new ExplosionParticles(1000);
@@ -108,7 +108,7 @@ Player.prototype.render = function(elapasedTime, ctx) {
   if(this.health <= 0 && this.timeSinceDeath < 2000){
     this.explosionParticles.render(elapasedTime, ctx);
   }else if(this.health > 0){
-    ctx.drawImage(this.img, 48+offset, 57, 24, 28, -12, -14, 24, 28);
+    ctx.drawImage(this.img, 48+offset, 56, 24, 28, -12, -14, 24, 28);
   }
 
   ctx.restore();

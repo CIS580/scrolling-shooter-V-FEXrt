@@ -66,7 +66,7 @@ function drawTitle(self, ctx){
   ctx.textAlign="center";
 
   var centerX = Math.floor(self.frame.size.width / 2);
-  ctx.fillText("YEERYAN", centerX, 373);
+  ctx.fillText("Tyrian", centerX, 373);
 }
 
 function drawHealth(self, ctx){

@@ -22,7 +22,7 @@ function Bullet(position, velocity, type, isEnemy) {
   this.velocity = {x: velocity.x, y: velocity.y};
   this.type = type;
   this.isEnemy = isEnemy;
-  this.position.r = BulletDefinition.getTypeDefinition(this.type).radius
+  this.position.r = BulletDefinition.getTypeDefinition(this.type).renderSource.width / 2;
   this.destroy = false;
 }
 
@@ -35,12 +35,23 @@ Bullet.prototype.render = function(elapsedTime, ctx) {
   // Render the bullets as a single path
   ctx.save();
   ctx.translate(this.position.x, this.position.y);
-  BulletDefinition.getTypeDefinition(this.type).render(elapsedTime, ctx);
+
+  if(this.isEnemy) ctx.rotate(Math.PI);
+
+  var source = BulletDefinition.getTypeDefinition(this.type).renderSource;
+
+  ctx.drawImage(
+    BulletDefinition.tileset,
+    source.x, source.y, source.width, source.height,
+    -source.width/2, -source.height/2, source.width, source.height);
+
   ctx.restore();
 }
+
 Bullet.prototype.retain = function(){
   var bounds = this.position.r * 2;
   return !this.destroy && window.camera.onScreen({x: this.position.x, y: this.position.y, width: bounds, height: bounds});
 }
+
 Bullet.prototype.collided = function(entity) {
 }

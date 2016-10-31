@@ -1,13 +1,13 @@
 "use strict";
 
-window.debug = true;
+window.debug = false;
 
 /* Classes and Libraries */
 const Game = require('./game');
 const Vector = require('./vector');
 const Camera = require('./camera');
 const Player = require('./player');
-const Enemy = require('./enemy');
+const EntitySpawner = require('./entity_spawner')
 const EntityManager = require('./entity_manager');
 const Hud = require('./hud');
 const Tilemap = require('./tilemap');
@@ -28,6 +28,7 @@ var input = {
 var camera = new Camera(canvas);
 var entityManager = new EntityManager();
 var player = new Player(entityManager);
+var entitySpawner = new EntitySpawner(entityManager, player);
 
 var tilemaps = [];
 var hud = new Hud(player, {x: 768, y: 0, width: canvas.width - 768, height: canvas.height});
@@ -36,7 +37,6 @@ window.camera = camera;
 window.input = input;
 
 entityManager.addEntity(player);
-entityManager.addEntity(new Enemy(entityManager, player));
 
 tilemaps.push(new Tilemap(mapdataB1, canvas, true, {
   onload: function() {
@@ -95,6 +95,9 @@ window.onkeydown = function(event) {
     case "d":
       input.right = true;
       event.preventDefault();
+      break;
+    case "p":
+      game.pause(true);
       break;
   }
 }
@@ -159,6 +162,7 @@ function update(elapsedTime) {
   tilemaps[2].moveTo({x:0, y: camera.y * (7/3)});
 
   entityManager.update(elapsedTime);
+  entitySpawner.update(elapsedTime);
 }
 
 /**
