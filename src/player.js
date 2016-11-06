@@ -8,7 +8,7 @@ const Enemy = require('./enemy');
 const BulletDefinition = require('./bullet_types');
 
 /* Constants */
-const PLAYER_SPEED = 5;
+const PLAYER_SPEED = 50;
 const BULLET_SPEED = 10;
 
 /**
@@ -25,22 +25,42 @@ module.exports = exports = Player;
 function Player(em) {
   this.entityManager = em;
   this.angle = 0;
-  this.position = {x: 200, y: 8375, r: 12};
   this.velocity = {x: 0, y: 0};
   this.img = new Image()
   this.img.src = 'tilesets/tyrian.shp.007D3C.png';
 
+  this.init();
+
+}
+
+
+Player.prototype.reset = function() {
+  this.init();
+}
+
+Player.prototype.levelUp = function(){
+    this.position = {x: 200, y: 8375, r: 12};
+    this.previousScore = this.score;
+    this.previousTime = this.time;
+}
+
+Player.prototype.init = function(){
+  this.position = {x: 200, y: 8375, r: 12};
+
   this.maxHealth = 100;
   this.health = 100;
   this.score = 0;
-  this.weapon = BulletDefinition.Types.Blaster2;
+  this.time = 0;
+  this.weapon = BulletDefinition.Types.Pistol;
+
+  this.previousScore = this.score;
+  this.previousTime = this.time;
 
   this.timeSinceDeath = 0;
   this.explosionParticles = new ExplosionParticles(1000);
 
   this.color = 'green';
 }
-
 /**
  * @function update
  * Updates the player based on the supplied input
@@ -85,6 +105,9 @@ Player.prototype.update = function(elapsedTime) {
   if(this.position.x > 758) this.position.x = 758;
   if(this.position.y > 8375) this.position.y = 8375;
   if(this.position.y < 672/2) this.position.y = 672/2;
+
+  // Increase Time on the level
+  this.time += elapsedTime;
 }
 
 /**

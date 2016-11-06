@@ -10,11 +10,17 @@ const Player = require('./player');
 const EntitySpawner = require('./entity_spawner')
 const EntityManager = require('./entity_manager');
 const Hud = require('./hud');
+const Summary = require('./summary');
 const Tilemap = require('./tilemap');
-const mapdataB1 = require('../tilemaps/background3.json');
-const mapdataM1 = require('../tilemaps/middleground3.json');
-const mapdataT1 = require('../tilemaps/topground3.json');
-
+const mapdataB1 = require('../tilemaps/background1.json');
+const mapdataM1 = require('../tilemaps/middleground1.json');
+const mapdataT1 = require('../tilemaps/topground1.json');
+const mapdataB2 = require('../tilemaps/background2.json');
+const mapdataM2 = require('../tilemaps/middleground2.json');
+const mapdataT2 = require('../tilemaps/topground2.json');
+const mapdataB3 = require('../tilemaps/background3.json');
+const mapdataM3= require('../tilemaps/middleground3.json');
+const mapdataT3 = require('../tilemaps/topground3.json');
 
 /* Global variables */
 var canvas = document.getElementById('screen');
@@ -25,13 +31,28 @@ var input = {
   left: false,
   right: false
 }
+
+var GameState = {
+  Level1: 0,
+  Level2: 1,
+  Level3: 2,
+  Dead: 3,
+  Summary1: 4,
+  Summary2: 5,
+  Summary3: 6
+}
+
+
 var camera = new Camera(canvas);
 var entityManager = new EntityManager();
 var player = new Player(entityManager);
 var entitySpawner = new EntitySpawner(entityManager, player);
 
 var tilemaps = [];
+var summary = new Summary("Placeholder", player, canvas);
 var hud = new Hud(player, {x: 768, y: 0, width: canvas.width - 768, height: canvas.height});
+var gameState = GameState.Level1;
+var level = 0;
 
 window.camera = camera;
 window.input = input;
@@ -54,7 +75,39 @@ tilemaps.push(new Tilemap(mapdataT1, canvas, true, {
   }
 }));
 
-var mapCount = 3
+tilemaps.push(new Tilemap(mapdataB2, canvas, true, {
+  onload: function() {
+    startLevel();
+  }
+}));
+tilemaps.push(new Tilemap(mapdataM2, canvas, true, {
+  onload: function() {
+    startLevel();
+  }
+}));
+tilemaps.push(new Tilemap(mapdataT2, canvas, true, {
+  onload: function() {
+    startLevel();
+  }
+}));
+
+tilemaps.push(new Tilemap(mapdataB3, canvas, true, {
+  onload: function() {
+    startLevel();
+  }
+}));
+tilemaps.push(new Tilemap(mapdataM3, canvas, true, {
+  onload: function() {
+    startLevel();
+  }
+}));
+tilemaps.push(new Tilemap(mapdataT3, canvas, true, {
+  onload: function() {
+    startLevel();
+  }
+}));
+
+var mapCount = 9
 function startLevel(){
   mapCount--;
   if(mapCount == 0){
@@ -130,8 +183,25 @@ window.onkeyup = function(event) {
       break;
   }
   if(event.keyCode == 32 || event.keyCode == 16){
-    player.fireBullet();
     event.preventDefault();
+
+    if(gameState < GameState.Dead){
+      player.fireBullet();
+    }else if (gameState == GameState.Dead || gameState == GameState.Summary3){
+      // reset everything
+      player.reset();
+      entityManager.reset();
+      entityManager.addEntity(player);
+      gameState = GameState.Level1;
+      level = 0;
+    }else{
+      // move to next level
+      entityManager.reset();
+      entityManager.addEntity(player);
+      player.levelUp();
+      level = (level + 1) % 3;
+      gameState -= 3;
+    }
   }
 }
 
@@ -154,12 +224,43 @@ var masterLoop = function(timestamp) {
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
+
+  if(gameState > GameState.Level3){
+    summary.update(elapsedTime);
+    return;
+  }
+
+  if(player.health <= 0){
+    // Game over. Start new game
+    summary = new Summary("Game Over", player, canvas);
+    setTimeout(function(){gameState = GameState.Dead;}, 2000);
+  }
+
+  if(player.position.y <= 336){
+    // Display summary. Prepare for next level.
+    if(gameState == GameState.Level1){
+      summary = new Summary("Level 1 Complete", player, canvas);
+      gameState = GameState.Summary1;
+    }
+    if(gameState == GameState.Level2){
+      summary = new Summary("Level 2 Complete", player, canvas);
+      gameState = GameState.Summary2;
+    }
+    if(gameState == GameState.Level3){
+      summary = new Summary("Game Complete", player, canvas);
+      gameState = GameState.Summary3;
+    }
+    return;
+  }
+
   // update the camera
   camera.update(player.position);
 
-  tilemaps[0].moveTo({x:0, y: camera.y});
-  tilemaps[1].moveTo({x:0, y: camera.y * (5/3)});
-  tilemaps[2].moveTo({x:0, y: camera.y * (7/3)});
+  var idx = level * 3;
+
+  tilemaps[idx].moveTo({x:0, y: camera.y});
+  tilemaps[idx + 1].moveTo({x:0, y: camera.y * (5/3)});
+  tilemaps[idx + 2].moveTo({x:0, y: camera.y * (7/3)});
 
   entityManager.update(elapsedTime);
   entitySpawner.update(elapsedTime);
@@ -176,9 +277,10 @@ function render(elapsedTime, ctx) {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  tilemaps.forEach(function(map){
-    map.render(ctx);
-  });
+  var idx = level * 3;
+  tilemaps[idx].render(ctx);
+  tilemaps[idx + 1].render(ctx);
+  tilemaps[idx + 2].render(ctx);
 
   // Transform the coordinate system using
   // the camera position BEFORE rendering
@@ -193,6 +295,10 @@ function render(elapsedTime, ctx) {
   // Render the GUI without transforming the
   // coordinate system
   hud.render(ctx);
+
+  if(gameState > GameState.Level3){
+    summary.render(elapsedTime, ctx);
+  }
 }
 
 /**

@@ -19,7 +19,6 @@ function EntitySpawner(em, player) {
 
   this.timer = rand(1500) + 500;
 
-
 }
 
 EntitySpawner.prototype.update = function(elapsedTime){

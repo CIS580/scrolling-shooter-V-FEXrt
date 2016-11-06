@@ -22,6 +22,10 @@ EntityManager.prototype.destroyEntity = function(entity){
   this.entities.splice(idx, 1);
 }
 
+EntityManager.prototype.reset = function() {
+  this.entities = [];
+}
+
 EntityManager.prototype.update = function(elapsedTime) {
   var toBeDestroyed = [];
   var self = this;
