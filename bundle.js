@@ -1259,7 +1259,7 @@ const Enemy = require('./enemy');
 const BulletDefinition = require('./bullet_types');
 
 /* Constants */
-const PLAYER_SPEED = 50;
+const PLAYER_SPEED = 5;
 const BULLET_SPEED = 10;
 
 /**
