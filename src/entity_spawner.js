@@ -17,7 +17,7 @@ function EntitySpawner(em, player) {
   this.entityManager = em;
   this.player = player;
 
-  this.timer = rand(1500) + 500;
+  this.timer = rand(500) + 100;
 
 }
 
@@ -41,10 +41,9 @@ function generatePosition(self){
   var pos = window.camera.toScreenCoordinates(self.player.position);
 
   var x = rand(673);
-  var y = rand(1009);
+  var y = rand(50);
 
   if(pos.x == x) x += (rand(40) - 19);
-  if(pos.y == y) y += (rand(40) - 19);
 
   return window.camera.toWorldCoordinates({x: x, y: y});
 }
